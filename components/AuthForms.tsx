@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { SubmitHandler, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
@@ -46,40 +46,53 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ mode, onClose }) => {
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<AuthFormValues>({
-    resolver: yupResolver(schema),
+    // Casting resolver to any to satisfy strict generic constraints in react-hook-form.
+    resolver: yupResolver(schema) as any,
   });
 
   const handleApiError = (err: unknown) => {
     if (typeof err === 'object' && err !== null && 'code' in err) {
       const errorWithCode = err as { code?: string; message?: string };
 
-      if (errorWithCode.code === 'auth/email-already-in-use') {
-        setError('Email already in use.');
-        return;
-      }
-
-      if (errorWithCode.code === 'auth/invalid-credential') {
-        setError('Invalid email or password.');
-        return;
-      }
-
-      if (
-        errorWithCode.code === 'auth/cancelled-popup-request' ||
-        errorWithCode.code === 'auth/popup-closed-by-user'
-      ) {
-        return;
-      }
-
-      if (errorWithCode.code === 'auth/popup-blocked') {
-        setError('Please allow pop-ups for Google Sign-In in your browser.');
-        return;
+      switch (errorWithCode.code) {
+        case 'auth/email-already-in-use':
+          setError('This email is already registered. Try logging in instead.');
+          return;
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+          setError('Invalid email or password.');
+          return;
+        case 'auth/weak-password':
+          setError('Password is too weak. Please use at least 6 characters.');
+          return;
+        case 'auth/invalid-email':
+        case 'auth/missing-email':
+          setError('Please enter a valid email address.');
+          return;
+        case 'auth/network-request-failed':
+          setError('Network error. Check your internet connection and try again.');
+          return;
+        case 'auth/operation-not-allowed':
+        case 'auth/invalid-api-key':
+        case 'auth/configuration-not-found':
+          setError('Authentication is temporarily unavailable. Please try again later.');
+          return;
+        case 'auth/cancelled-popup-request':
+        case 'auth/popup-closed-by-user':
+          return;
+        case 'auth/popup-blocked':
+          setError('Please allow pop-ups for Google Sign-In in your browser.');
+          return;
+        default:
+          break;
       }
     }
 
     setError('An error occurred. Please try again.');
   };
 
-  const onSubmit = async (data: AuthFormValues) => {
+  const onSubmit: SubmitHandler<AuthFormValues> = async (data) => {
     setError(null);
 
     try {
