@@ -6,7 +6,7 @@ export interface IconProps extends React.SVGAttributes<SVGSVGElement> {
   name: IconName;
 }
 
-const ICON_PATHS: Record<IconName, JSX.Element> = {
+const ICON_PATHS: Record<IconName, React.ReactElement> = {
   'arrow-right': (
     <path
       d="M1 17L17 1M17 1H5.8M17 1V12.2"

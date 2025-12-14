@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Resolver, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Button } from './Button';
@@ -28,9 +28,19 @@ const schema = yup.object({
     .required('Comment is required'),
 }).required();
 
+const appointmentFormResolver: Resolver<AppointmentFormData> =
+  yupResolver(schema) as Resolver<AppointmentFormData>;
+
 export const AppointmentForm: React.FC<AppointmentFormProps> = ({ psychologist, onClose }) => {
-  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<AppointmentFormData>({
-    resolver: yupResolver(schema)
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+    reset,
+  } = useForm<AppointmentFormData>({
+    resolver: appointmentFormResolver,
   });
   const { showNotification } = useAppContext();
   const [isTimeOpen, setIsTimeOpen] = useState(false);
