@@ -23,14 +23,28 @@ interface AuthFormValues {
 }
 
 const loginSchema = yup.object({
-  email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  email: yup
+    .string()
+    .trim()
+    .email('Please enter a valid email address.')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
 }).required();
 
 const registerSchema = yup.object({
   name: yup.string().required('Name is required'),
-  email: yup.string().email('Invalid email').required('Email is required'),
-  password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
+  email: yup
+    .string()
+    .trim()
+    .email('Please enter a valid email address.')
+    .required('Email is required'),
+  password: yup
+    .string()
+    .min(6, 'Password must be at least 6 characters')
+    .required('Password is required'),
 }).required();
 
 export const AuthForms: React.FC<AuthFormsProps> = ({ mode, onClose }) => {
@@ -69,6 +83,11 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ mode, onClose }) => {
         case 'auth/invalid-email':
         case 'auth/missing-email':
           setError('Please enter a valid email address.');
+          return;
+        case 'auth/unauthorized-domain':
+          setError(
+            'Google Sign-In is not allowed from this domain. Please add this domain to the authorized domains in your Firebase project settings.',
+          );
           return;
         case 'auth/network-request-failed':
           setError('Network error. Check your internet connection and try again.');
