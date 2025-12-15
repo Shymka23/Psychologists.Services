@@ -36,6 +36,42 @@ const fetchFavorites = async (uid: string): Promise<string[]> => {
   return [];
 };
 
+const getLocalFavoritesKey = (uid?: string | null): string => {
+  if (!uid) {
+    return 'favorites_guest';
+  }
+
+  return `favorites_${uid}`;
+};
+
+const loadLocalFavorites = (uid?: string | null): string[] => {
+  try {
+    const raw = window.localStorage.getItem(getLocalFavoritesKey(uid));
+
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === 'string');
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalFavorites = (favorites: string[], uid?: string | null): void => {
+  try {
+    window.localStorage.setItem(getLocalFavoritesKey(uid), JSON.stringify(favorites));
+  } catch {
+    return;
+  }
+};
+
 const fetchPsychologists = async (): Promise<Psychologist[]> => {
   try {
     const snapshot = await get(child(ref(db), 'psychologists'));
@@ -493,6 +529,14 @@ const App = () => {
     isVisible: false
   });
 
+  useEffect(() => {
+    const initialFavorites = loadLocalFavorites(null);
+
+    if (initialFavorites.length > 0) {
+      setFavorites(initialFavorites);
+    }
+  }, []);
+
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
       setToast({ message, type, isVisible: true });
   };
@@ -501,21 +545,37 @@ const App = () => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+          const localFavs = loadLocalFavorites(currentUser.uid);
+          if (localFavs.length > 0) {
+            setFavorites(localFavs);
+          }
+
           try {
-             const favs = await fetchFavorites(currentUser.uid);
-             setFavorites(favs || []);
+             const remoteFavs = await fetchFavorites(currentUser.uid);
+
+             if (remoteFavs.length > 0) {
+               setFavorites(remoteFavs);
+               saveLocalFavorites(remoteFavs, currentUser.uid);
+             } else if (localFavs.length > 0) {
+               await syncFavorites(currentUser.uid, localFavs);
+             }
           } catch {
-             setFavorites([]);
+             // keep local favorites if remote failed
           }
       } else {
-          setFavorites([]);
+          const guestFavs = loadLocalFavorites(null);
+          setFavorites(guestFavs);
       }
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  const toggleFavorite = async (id: string) => {
+  useEffect(() => {
+    saveLocalFavorites(favorites, user?.uid ?? null);
+  }, [favorites, user]);
+
+  const toggleFavorite = (id: string): void => {
       if (!user) return;
       let newFavs: string[] = [];
       let isAdded = false;
@@ -532,7 +592,7 @@ const App = () => {
         showNotification("Removed from favorites", "info");
       }
 
-      await syncFavorites(user.uid, newFavs);
+      void syncFavorites(user.uid, newFavs);
   };
 
   const openAuthModal = (mode: 'login' | 'register') => {
